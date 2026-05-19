@@ -1,0 +1,38 @@
+# Run `just hooks-install` once after cloning to activate these locally.
+# CI runs `pre-commit run --all-files` to enforce the same gate.
+#
+# Update pinned versions with: `pre-commit autoupdate`
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: \.(fcm|svg)$
+      - id: end-of-file-fixer
+        exclude: \.(fcm|svg)$
+      - id: check-yaml
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: [--maxkb=500]
+      - id: mixed-line-ending
+        args: [--fix=lf]
+      - id: check-case-conflict
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.4
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.13.0
+    hooks:
+      - id: mypy
+        files: ^src/
+        exclude: ^src/svg2fcm/inkscape_ext/
+        args: [--strict, --config-file=pyproject.toml]
+        additional_dependencies:
+          - svgelements>=1.9.6

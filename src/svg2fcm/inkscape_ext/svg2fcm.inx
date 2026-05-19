@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<inkscape-extension xmlns="http://www.inkscape.org/namespace/inkscape/extension">
+    <name>Brother ScanNCut FCM (*.fcm)</name>
+    <id>org.svg2fcm.output</id>
+    <output>
+        <extension>.fcm</extension>
+        <mimetype>application/x-fcm</mimetype>
+        <filetypename>Brother ScanNCut FCM (*.fcm)</filetypename>
+        <filetypetooltip>Brother ScanNCut FCM file for pen plotting</filetypetooltip>
+        <dataloss>true</dataloss>
+    </output>
+    <script>
+        <command location="inx" interpreter="python">svg2fcm_inkex.py</command>
+    </script>
+</inkscape-extension>

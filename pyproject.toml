@@ -1,0 +1,119 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "svg2fcm"
+version = "0.1.1"
+description = "Convert SVG files directly to Brother ScanNCut FCM format for pen plotting"
+readme = "README.md"
+license = { text = "MPL-2.0" }
+requires-python = ">=3.10"
+authors = [{ name = "Emilio" }]
+keywords = ["brother", "scanncut", "fcm", "svg", "plotter", "inkscape"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Multimedia :: Graphics :: Graphics Conversion",
+    "Topic :: Printing",
+]
+dependencies = ["svgelements>=1.9.6"]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "mypy>=1.10",
+    "ruff>=0.8",
+    "build>=1.2",
+    "pre-commit>=3.7",
+]
+
+[project.scripts]
+svg2fcm = "svg2fcm.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/emilioguernik/svg2fcm"
+Issues = "https://github.com/emilioguernik/svg2fcm/issues"
+Repository = "https://github.com/emilioguernik/svg2fcm"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/svg2fcm"]
+
+# ---- ruff ----
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E",
+    "W",   # pycodestyle
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # bugbear
+    "UP",  # pyupgrade
+    "SIM", # simplify
+    "RUF", # ruff-specific
+    "N",   # pep8-naming
+    "D",   # pydocstyle
+]
+ignore = [
+    "D100",   # missing docstring in public module — we use module docstrings selectively
+    "D104",   # missing docstring in public package
+    "D105",   # missing docstring in magic method — __repr__ etc. don't need one
+    "D107",   # missing docstring in __init__
+    "D203",   # 1 blank line required before class docstring (conflicts with D211)
+    "D213",   # multi-line summary on second line (conflicts with D212)
+    "RUF002", # ambiguous Unicode in docstrings — we intentionally use ×, –, →, etc.
+    "RUF003", # ambiguous Unicode in comments — same reason
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["D"] # tests don't need docstrings
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+# ---- mypy ----
+[tool.mypy]
+python_version = "3.10"
+strict = true
+warn_unused_configs = true
+files = ["src", "tests"]
+# Inkscape extension shim imports ``inkex``, which only exists inside
+# Inkscape's bundled Python — not installable as a dev dependency. The
+# packager script is dev-only tooling and not part of the typed surface.
+exclude = "src/svg2fcm/inkscape_ext/.*|scripts/.*|tests/integration/test_inkscape_package\\.py"
+
+[[tool.mypy.overrides]]
+module = ["svgelements", "svgelements.*", "PIL", "PIL.*"]
+ignore_missing_imports = true
+
+# ---- pytest ----
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+addopts = "-ra --strict-markers --strict-config"
+pythonpath = ["src"]
+
+[tool.coverage.run]
+branch = true
+source = ["svg2fcm"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+]
