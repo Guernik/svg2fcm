@@ -107,9 +107,25 @@ upstream license so we can verify compatibility before merging.
 
 (For maintainers.)
 
-1. Update the version in `pyproject.toml`.
+1. Bump the version in **both** `pyproject.toml` and
+   `src/svg2fcm/__init__.py` (they must match — the release workflow
+   verifies this).
 2. Move `CHANGELOG.md`'s `[Unreleased]` section under a new dated
-   release header.
-3. Tag the commit (`git tag vX.Y.Z`) and push tags.
-4. CI builds the wheel + sdist; the PyPI publish workflow (when set up)
-   takes it from there.
+   release header, e.g. `## [0.1.1] — 2026-05-19`. The release workflow
+   extracts the body of this section as the GitHub Release notes, so
+   the heading text must match the tag's version exactly.
+3. Commit the bump and push to `main`.
+4. Tag the commit and push the tag:
+
+   ```bash
+   git tag v0.1.1
+   git push origin v0.1.1
+   ```
+
+5. The `release` workflow (`.github/workflows/release.yml`) fires on
+   the `v*` tag, builds the wheel, sdist, and Inkscape extension zip,
+   then publishes a GitHub Release at
+   `https://github.com/emilioguernik/svg2fcm/releases/tag/v0.1.1` with
+   those three artifacts attached.
+
+PyPI publishing is not wired up yet.

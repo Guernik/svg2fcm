@@ -1,6 +1,6 @@
 # svg2fcm
 
-[![ci](https://github.com/emilioguernik/svg2fcm/actions/workflows/ci.yml/badge.svg)](https://github.com/emilioguernik/svg2fcm/actions/workflows/ci.yml)
+[![ci](https://github.com/guernik/svg2fcm/actions/workflows/ci.yml/badge.svg)](https://github.com/guernik/svg2fcm/actions/workflows/ci.yml)
 [![license: MPL-2.0](https://img.shields.io/badge/license-MPL--2.0-blue.svg)](LICENSE)
 [![python: 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](pyproject.toml)
 
