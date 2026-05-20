@@ -169,7 +169,7 @@ def test_cli_main_returns_zero_on_success(
     fcm_path = tmp_path / "out.fcm"
     rect = '<rect x="0" y="0" width="10" height="10" stroke="black" fill="none"/>'
     svg_path.write_text(SVG_WRAP.format(rect))
-    exit_code = main([str(svg_path), str(fcm_path)])
+    exit_code = main([str(svg_path), "-o", str(fcm_path)])
     assert exit_code == 0
     assert fcm_path.exists()
     captured = capsys.readouterr()
@@ -180,5 +180,5 @@ def test_cli_main_returns_one_on_invalid_svg(tmp_path: Path) -> None:
     bad = tmp_path / "bad.svg"
     out = tmp_path / "out.fcm"
     bad.write_text("not actually svg")
-    assert main([str(bad), str(out)]) == 1
+    assert main([str(bad), "-o", str(out)]) == 1
     assert not out.exists()

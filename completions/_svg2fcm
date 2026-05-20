@@ -1,0 +1,28 @@
+#compdef svg2fcm
+#
+# Zsh completion for svg2fcm.
+#
+# Install: copy this file into any directory on your $fpath and
+# rebuild the completion cache:
+#     mkdir -p ~/.zsh/completions
+#     cp _svg2fcm ~/.zsh/completions/
+#     # Then in ~/.zshrc, before `compinit`:
+#     fpath=(~/.zsh/completions $fpath)
+#     autoload -Uz compinit && compinit
+
+_svg2fcm() {
+    local -a args
+    args=(
+        '(-h --help)'{-h,--help}'[show help message and exit]'
+        '(-o --output)'{-o,--output}'[output .fcm file, directory, or fixed-SVG path]:output:_files'
+        '*'{-v,--verbose}'[increase verbosity (repeat for debug)]'
+        '(-n --no-group)'{-n,--no-group}'[emit one piece per shape (legacy)]'
+        '--fix-viewbox[rewrite the SVG with a synthesised viewBox and exit]'
+        '--no-viewbox-fix[skip the implicit viewBox fix before conversion]'
+        '(-V --version)'{-V,--version}'[show version and exit]'
+        '*:svg file:_files -g "*.svg"'
+    )
+    _arguments -s -S $args
+}
+
+_svg2fcm "$@"
