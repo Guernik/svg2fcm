@@ -73,6 +73,29 @@ install-cli:
 uninstall-cli:
     pipx uninstall svg2fcm
 
+# Install shell completions for the current user. Auto-detects fish; for
+# bash/zsh prints the snippet to add to the rc file. Idempotent.
+completions-install:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    repo="$(pwd)"
+    fish_dir="${HOME}/.config/fish/completions"
+    if [ -d "${HOME}/.config/fish" ]; then
+        mkdir -p "${fish_dir}"
+        cp "${repo}/completions/svg2fcm.fish" "${fish_dir}/svg2fcm.fish"
+        echo "✓ fish: installed at ${fish_dir}/svg2fcm.fish (open a new shell)"
+    else
+        echo "  fish: ~/.config/fish not found, skipping. To install manually:"
+        echo "       cp completions/svg2fcm.fish ~/.config/fish/completions/"
+    fi
+    echo ""
+    echo "  bash: add to ~/.bashrc:"
+    echo "       . \"${repo}/completions/svg2fcm.bash\""
+    echo ""
+    echo "  zsh:  add ${repo}/completions to your \$fpath, e.g. in ~/.zshrc:"
+    echo "       fpath=(\"${repo}/completions\" \$fpath)"
+    echo "       autoload -Uz compinit && compinit"
+
 # Remove caches, build artifacts, and the venv.
 clean:
     rm -rf build dist *.egg-info

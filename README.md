@@ -62,6 +62,22 @@ just install-cli                                   # = pipx install --force .
 
 Remove with `just uninstall-cli` (or `pipx uninstall svg2fcm`).
 
+### Shell completions
+
+Completion scripts for **bash**, **zsh**, and **fish** live in
+[`completions/`](completions/). From a repo checkout, the easiest way to
+install them is:
+
+```bash
+just completions-install
+```
+
+That copies the fish script into `~/.config/fish/completions/` (if
+fish is present) and prints the one-line snippet to paste into
+`~/.bashrc` or `~/.zshrc` for the other two shells. The scripts have no
+runtime dependencies — they're plain shell, sourced once per shell
+startup.
+
 ### From source (development)
 
 For hacking on the project itself:
@@ -76,15 +92,56 @@ just check          # ruff + mypy --strict + pytest
 ## Usage
 
 ```bash
-svg2fcm input.svg output.fcm           # convert
-svg2fcm -v input.svg output.fcm        # info-level logging
-svg2fcm -vv input.svg output.fcm       # debug-level logging
-svg2fcm -n input.svg output.fcm        # one piece per shape (legacy);
-                                       # default groups everything into one
-                                       # piece, which the machine imports
-                                       # more reliably.
+svg2fcm input.svg                       # convert -> input.fcm next to the SVG
+svg2fcm input.svg -o output.fcm         # convert to an explicit path
+svg2fcm input.svg -o ./out/             # write into a directory (uses input stem)
+svg2fcm -v  input.svg                   # info-level logging
+svg2fcm -vv input.svg                   # debug-level logging
+svg2fcm -n  input.svg                   # one piece per shape (legacy);
+                                        # default groups everything into one
+                                        # piece, which the machine imports
+                                        # more reliably.
 svg2fcm --version
 ```
+
+### Multi-pen (Inkscape layers)
+
+If the SVG contains two or more Inkscape layers (one per pen), `svg2fcm`
+emits one `.fcm` per layer, named `<input-stem>_<layer-label>.fcm`:
+
+```bash
+svg2fcm benteveo_multi_pen.svg
+# -> benteveo_multi_pen_1.fcm
+# -> benteveo_multi_pen_2.fcm
+# -> benteveo_multi_pen_3.fcm
+# -> benteveo_multi_pen_4.fcm
+
+svg2fcm benteveo_multi_pen.svg -o ./out/   # all four files into ./out/
+```
+
+A single Inkscape layer is treated as a single-pen design (one `.fcm`,
+no `_<label>` suffix).
+
+### Fixing missing `viewBox`
+
+Some SVG generators (DrawingBot V3, certain plotter exporters) emit
+files with `width="210mm"` / `height="297mm"` but **no `viewBox`**.
+Such files render at the wrong scale in Illustrator, browsers, and
+Canvas Workspace. `svg2fcm` detects this and **silently injects a
+correct `viewBox`** in memory before encoding the `.fcm` — you don't
+have to do anything.
+
+You can also fix the SVG itself (e.g. so it opens correctly in
+Illustrator) without producing an `.fcm`:
+
+```bash
+svg2fcm bad.svg --fix-viewbox             # rewrite bad.svg in place
+svg2fcm bad.svg -o fixed.svg --fix-viewbox # leave bad.svg untouched
+svg2fcm input.svg --no-viewbox-fix        # opt out of the implicit fix
+```
+
+The viewBox is computed from the actual coordinate range of the path
+data (with all group transforms baked in), not just from `width`/`height`.
 
 Transfer the `.fcm` to your ScanNCut machine using a USB flash drive
 ([Brother docs](https://support.canvasworkspace.brother.com/en/connection/)).
