@@ -6,6 +6,15 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.2.1] — 2026-05-20
+
+### Changed
+
+- Release workflow (`.github/workflows/release.yml`) now runs
+  `pre-commit run --all-files` and `pytest -q` as gates before
+  building artifacts or publishing the GitHub Release. A failing lint
+  or test aborts the release.
+
 ## [0.2.0] — 2026-05-20
 
 ### Added
