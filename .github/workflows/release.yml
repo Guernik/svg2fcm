@@ -45,8 +45,19 @@ jobs:
           echo "---- release notes ----"
           cat RELEASE_NOTES.md
 
+      - name: Install package with dev extras
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+
+      - name: Run pre-commit hooks (release gate)
+        run: pre-commit run --all-files --show-diff-on-failure
+
+      - name: Run test suite (release gate)
+        run: python -m pytest -q
+
       - name: Install build tooling
-        run: python -m pip install --upgrade pip build
+        run: python -m pip install --upgrade build
 
       - name: Build wheel and sdist
         run: python -m build

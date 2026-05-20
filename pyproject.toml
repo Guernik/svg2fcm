@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "svg2fcm"
-version = "0.2.0"
+version = "0.2.1"
 description = "Convert SVG files directly to Brother ScanNCut FCM format for pen plotting"
 readme = "README.md"
 license = { text = "MPL-2.0" }
