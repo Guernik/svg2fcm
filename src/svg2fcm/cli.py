@@ -21,6 +21,7 @@ from svg2fcm.fcm.writer import encode_fcm
 from svg2fcm.svg.layers import Layer, split_layers
 from svg2fcm.svg.loader import load_svg, load_svg_from_string
 from svg2fcm.svg.viewbox import ensure_viewbox
+from svg2fcm.svg.vpype_pass import run_vpype
 from svg2fcm.thumbnail import render_thumbnail
 
 logger = logging.getLogger(__name__)
@@ -53,9 +54,14 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "-v",
         "--verbose",
-        action="count",
-        default=0,
-        help="increase verbosity (use -vv for debug)",
+        action="store_true",
+        help="enable DEBUG logging (per-shape, per-layer detail)",
+    )
+    parser.add_argument(
+        "-q",
+        "--quiet",
+        action="store_true",
+        help="suppress INFO logging; only show warnings and errors",
     )
     parser.add_argument(
         "-n",
@@ -87,6 +93,19 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--vpype",
+        type=str,
+        default=None,
+        metavar="PIPELINE",
+        help=(
+            "pre-process the SVG through a vpype pipeline before conversion. "
+            "Pass the pipeline as a single quoted string, exactly as you would "
+            "type it after `vpype` on the command line, minus the read/write "
+            'bookends (e.g. --vpype "linemerge --tolerance 0.1mm linesimplify"). '
+            "Requires the optional vpype extra: `pip install svg2fcm[vpype]`."
+        ),
+    )
+    parser.add_argument(
         "-V",
         "--version",
         action="version",
@@ -95,12 +114,13 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def _setup_logging(verbosity: int) -> None:
-    level = logging.WARNING
-    if verbosity == 1:
-        level = logging.INFO
-    elif verbosity >= 2:
+def _setup_logging(*, verbose: bool, quiet: bool) -> None:
+    if verbose:
         level = logging.DEBUG
+    elif quiet:
+        level = logging.WARNING
+    else:
+        level = logging.INFO
     logging.basicConfig(level=level, format="%(levelname)s %(name)s: %(message)s")
 
 
@@ -123,17 +143,19 @@ def convert(input_path: Path, output_path: Path, *, group: bool = True) -> int:
     fcm = build_fcm(shapes, thumbnail, group=group)
     data = encode_fcm(fcm)
     output_path.write_bytes(data)
-    logger.info("Wrote %d bytes to %s", len(data), output_path)
+    logger.debug("Wrote %d bytes to %s", len(data), output_path)
     return len(shapes)
 
 
 def _convert_from_text(svg_text: str, output_path: Path, *, group: bool) -> int:
     """Like :func:`convert`, but takes an in-memory SVG string."""
     shapes = load_svg_from_string(svg_text)
+    logger.debug("Loaded %d shape(s) from in-memory SVG", len(shapes))
     thumbnail = render_thumbnail(shapes)
     fcm = build_fcm(shapes, thumbnail, group=group)
     data = encode_fcm(fcm)
     output_path.write_bytes(data)
+    logger.debug("Wrote %d bytes to %s", len(data), output_path)
     return len(shapes)
 
 
@@ -283,13 +305,16 @@ def main(argv: list[str] | None = None) -> int:
         (invalid SVG, unwriteable output), ``2`` on argparse errors.
     """
     args = _parse_args(argv)
-    _setup_logging(args.verbose)
+    _setup_logging(verbose=args.verbose, quiet=args.quiet)
     group = not args.no_group
     try:
         if args.fix_viewbox:
             return _run_fix_viewbox(args.input, args.output)
 
         svg_text = args.input.read_text(encoding="utf-8")
+        if args.vpype:
+            logger.info("Running vpype pipeline: %s", args.vpype)
+            svg_text = run_vpype(svg_text, args.vpype)
         if not args.no_viewbox_fix:
             svg_text, modified = ensure_viewbox(svg_text)
             if modified:
