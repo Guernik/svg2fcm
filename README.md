@@ -118,6 +118,7 @@ svg2fcm -n  input.svg                   # one piece per shape (legacy);
                                         # more reliably.
 svg2fcm input.svg --vpype "linemerge linesimplify"   # pre-process via vpype
                                         # (install with the [vpype] extra)
+svg2fcm input.svg --no-log              # skip the per-run result.log file
 svg2fcm --version
 ```
 
@@ -138,6 +139,17 @@ svg2fcm benteveo_multi_pen.svg -o ./out/   # all four files into ./out/
 
 A single Inkscape layer is treated as a single-pen design (one `.fcm`,
 no `_<label>` suffix).
+
+### Per-run result.log
+
+Every run drops a `<input-stem>_result.log` file next to the generated
+`.fcm` outputs. It contains the invocation, viewBox-fix status, layer
+detection, per-layer conversion details, and — when `--vpype` is used —
+the vpype pipeline plus `vpype ... stat` output on both the source and
+the vpype'd SVG. The log is captured at DEBUG level regardless of the
+console verbosity, so it's a complete record even when stdout was quiet.
+
+Pass `--no-log` to skip it.
 
 ### Pre-processing with vpype
 

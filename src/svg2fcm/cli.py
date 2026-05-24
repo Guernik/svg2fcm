@@ -9,7 +9,9 @@ one layer it writes a single ``.fcm`` exactly as before.
 from __future__ import annotations
 
 import argparse
+import datetime as _dt
 import logging
+import logging.handlers
 import re
 import sys
 from pathlib import Path
@@ -21,7 +23,7 @@ from svg2fcm.fcm.writer import encode_fcm
 from svg2fcm.svg.layers import Layer, split_layers
 from svg2fcm.svg.loader import load_svg, load_svg_from_string
 from svg2fcm.svg.viewbox import ensure_viewbox
-from svg2fcm.svg.vpype_pass import run_vpype
+from svg2fcm.svg.vpype_pass import run_vpype, vpype_stat
 from svg2fcm.thumbnail import render_thumbnail
 
 logger = logging.getLogger(__name__)
@@ -106,6 +108,16 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--no-log",
+        action="store_true",
+        help=(
+            "skip writing the per-run <input-stem>_result.log file. By default "
+            "svg2fcm drops a DEBUG-level log next to the FCM outputs documenting "
+            "the invocation, viewBox fix, vpype pipeline + stats, and per-layer "
+            "details — handy for debugging surprising machine behaviour."
+        ),
+    )
+    parser.add_argument(
         "-V",
         "--version",
         action="version",
@@ -114,14 +126,56 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def _setup_logging(*, verbose: bool, quiet: bool) -> None:
+_LOG_FORMAT = "%(levelname)s %(name)s: %(message)s"
+_FILE_LOG_FORMAT = "%(asctime)s %(levelname)s %(name)s: %(message)s"
+
+
+def _setup_logging(*, verbose: bool, quiet: bool) -> logging.handlers.MemoryHandler | None:
+    """Configure console logging and attach a DEBUG-level capture buffer.
+
+    Returns the capture handler so :func:`main` can later flush it to
+    ``<stem>_result.log``. Returns ``None`` only if there's no root
+    logger to attach to (never happens in practice — kept for typing).
+    """
     if verbose:
-        level = logging.DEBUG
+        console_level = logging.DEBUG
     elif quiet:
-        level = logging.WARNING
+        console_level = logging.WARNING
     else:
-        level = logging.INFO
-    logging.basicConfig(level=level, format="%(levelname)s %(name)s: %(message)s")
+        console_level = logging.INFO
+
+    # Wipe any pre-existing handlers so reruns inside the same process
+    # (tests) don't accumulate duplicates.
+    root = logging.getLogger()
+    for h in list(root.handlers):
+        root.removeHandler(h)
+    root.setLevel(logging.DEBUG)
+
+    console = logging.StreamHandler()
+    console.setLevel(console_level)
+    console.setFormatter(logging.Formatter(_LOG_FORMAT))
+    root.addHandler(console)
+
+    # Capacity well above any expected per-run record count; flushTarget
+    # stays None until we know the output path. We never auto-flush on
+    # level either — main() does the explicit flush.
+    capture = logging.handlers.MemoryHandler(capacity=100_000, flushLevel=logging.CRITICAL + 1)
+    capture.setLevel(logging.DEBUG)
+    capture.setFormatter(logging.Formatter(_FILE_LOG_FORMAT))
+    root.addHandler(capture)
+    return capture
+
+
+def _write_result_log(
+    capture: logging.handlers.MemoryHandler,
+    log_path: Path,
+    header_lines: list[str],
+) -> None:
+    """Render captured log records + header into ``log_path``."""
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    fmt = capture.formatter or logging.Formatter(_FILE_LOG_FORMAT)
+    body_lines = [fmt.format(rec) for rec in capture.buffer]
+    log_path.write_text("\n".join([*header_lines, "", *body_lines]) + "\n", encoding="utf-8")
 
 
 def convert(input_path: Path, output_path: Path, *, group: bool = True) -> int:
@@ -199,13 +253,16 @@ def _run_single(
     layers: list[Layer],
     *,
     group: bool,
-) -> int:
+) -> tuple[int, Path]:
     """Single-output path: 0 or 1 Inkscape layers.
 
     Output filename defaults to ``<input-stem>.fcm`` in the input's
     directory. An explicit output argument may be a file or a directory.
     Always converts from ``svg_text`` (which may already have been
     viewBox-fixed in memory), not by re-reading ``input_path``.
+
+    Returns ``(exit_code, log_dir)`` so the caller can drop a
+    ``<stem>_result.log`` alongside the FCM.
     """
     if output_arg is None:
         out_path = input_path.with_suffix(".fcm")
@@ -218,7 +275,7 @@ def _run_single(
     text_to_convert = layers[0].svg_text if layers else svg_text
     n = _convert_from_text(text_to_convert, out_path, group=group)
     print(f"Converted {n} shape(s): {input_path} -> {out_path}")
-    return 0
+    return 0, out_path.parent
 
 
 def _run_multi(
@@ -227,8 +284,12 @@ def _run_multi(
     layers: list[Layer],
     *,
     group: bool,
-) -> int:
-    """Multi-output path: 2+ Inkscape layers, one FCM per layer."""
+) -> tuple[int, Path]:
+    """Multi-output path: 2+ Inkscape layers, one FCM per layer.
+
+    Returns ``(exit_code, log_dir)`` so the caller can drop a
+    ``<stem>_result.log`` into the same directory.
+    """
     out_dir = _resolve_output_dir(output_arg, input_path, len(layers))
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -264,7 +325,7 @@ def _run_multi(
         f"Wrote {len(written)} file(s) from {len(layers)} layer(s) in {input_path} "
         f"({total_shapes} shape(s) total) -> {out_dir}"
     )
-    return 0
+    return 0, out_dir
 
 
 def _run_fix_viewbox(input_path: Path, output_arg: Path | None) -> int:
@@ -305,16 +366,34 @@ def main(argv: list[str] | None = None) -> int:
         (invalid SVG, unwriteable output), ``2`` on argparse errors.
     """
     args = _parse_args(argv)
-    _setup_logging(verbose=args.verbose, quiet=args.quiet)
+    capture = _setup_logging(verbose=args.verbose, quiet=args.quiet)
     group = not args.no_group
+
+    header_lines = [
+        f"svg2fcm {__version__} — run at {_dt.datetime.now().isoformat(timespec='seconds')}",
+        f"invocation: {' '.join(sys.argv)}",
+        f"input: {args.input}",
+        f"options: group={group}, fix_viewbox={not args.no_viewbox_fix}, " f"vpype={args.vpype!r}",
+    ]
+
+    log_dir: Path | None = None
+    exit_code = 0
     try:
         if args.fix_viewbox:
             return _run_fix_viewbox(args.input, args.output)
 
         svg_text = args.input.read_text(encoding="utf-8")
+
         if args.vpype:
             logger.info("Running vpype pipeline: %s", args.vpype)
+            stat_before = vpype_stat(svg_text)
+            if stat_before:
+                logger.debug("vpype stat (before pipeline):\n%s", stat_before.rstrip())
             svg_text = run_vpype(svg_text, args.vpype)
+            stat_after = vpype_stat(svg_text)
+            if stat_after:
+                logger.debug("vpype stat (after pipeline):\n%s", stat_after.rstrip())
+
         if not args.no_viewbox_fix:
             svg_text, modified = ensure_viewbox(svg_text)
             if modified:
@@ -322,16 +401,33 @@ def main(argv: list[str] | None = None) -> int:
                     "Injected viewBox into %s before conversion (pass --no-viewbox-fix to disable)",
                     args.input,
                 )
+            else:
+                logger.debug("viewBox already present (or could not be computed); no fix applied")
+        else:
+            logger.debug("viewBox fix skipped by --no-viewbox-fix")
+
         layers = split_layers(svg_text)
         if len(layers) <= 1:
-            return _run_single(args.input, args.output, svg_text, layers, group=group)
-        return _run_multi(args.input, args.output, layers, group=group)
+            exit_code, log_dir = _run_single(args.input, args.output, svg_text, layers, group=group)
+        else:
+            exit_code, log_dir = _run_multi(args.input, args.output, layers, group=group)
+        return exit_code
     except Svg2FcmError as exc:
         logger.error("%s", exc)
+        exit_code = 1
         return 1
     except OSError as exc:
         logger.error("I/O error: %s", exc)
+        exit_code = 1
         return 1
+    finally:
+        if capture is not None and not args.no_log and log_dir is not None:
+            log_path = log_dir / f"{args.input.stem}_result.log"
+            try:
+                _write_result_log(capture, log_path, [*header_lines, f"exit_code: {exit_code}"])
+            except OSError as exc:
+                # The log is a courtesy — never let it break a successful run.
+                logger.warning("Could not write result log to %s: %s", log_path, exc)
 
 
 if __name__ == "__main__":  # pragma: no cover

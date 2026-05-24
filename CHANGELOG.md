@@ -22,6 +22,11 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   marker-scoped to Python 3.11–3.13; the base install remains
   available on Python 3.10–3.14.
 - **`-q` / `--quiet`** flag to suppress INFO logging.
+- **Per-run `<input-stem>_result.log`** dropped alongside the FCM
+  outputs. Captures the invocation, viewBox-fix status, layer detection,
+  per-layer conversion, and (with `--vpype`) the pipeline plus
+  pre/post-pipeline `vpype stat` output. Always at DEBUG level
+  regardless of console verbosity. Disable with `--no-log`.
 
 ### Changed
 

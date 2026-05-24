@@ -15,10 +15,13 @@ afterwards, when the layer count matches.
 
 from __future__ import annotations
 
+import contextlib
+import io
 import logging
 import shlex
 import tempfile
 import xml.etree.ElementTree as ET
+from collections.abc import Iterator
 from pathlib import Path
 
 from svg2fcm.exceptions import Svg2FcmError
@@ -31,6 +34,29 @@ INKSCAPE_NS = "http://www.inkscape.org/namespaces/inkscape"
 _SVG_TAG = f"{{{SVG_NS}}}svg"
 _G_TAG = f"{{{SVG_NS}}}g"
 _LABEL_ATTR = f"{{{INKSCAPE_NS}}}label"
+
+
+@contextlib.contextmanager
+def _preserve_root_logger() -> Iterator[None]:
+    """Snapshot the root logger's handlers/level around a vpype call.
+
+    vpype's CLI calls ``logging.basicConfig(force=True)`` during command
+    initialisation, which wipes the handlers svg2fcm installed (console
+    + DEBUG capture). We save them before and restore them after so log
+    messages emitted later in the same run still reach our handlers.
+    """
+    root = logging.getLogger()
+    saved_handlers = list(root.handlers)
+    saved_level = root.level
+    try:
+        yield
+    finally:
+        # Replace whatever vpype left in place with our originals.
+        for h in list(root.handlers):
+            root.removeHandler(h)
+        for h in saved_handlers:
+            root.addHandler(h)
+        root.setLevel(saved_level)
 
 
 class VpypeNotInstalledError(Svg2FcmError):
@@ -77,7 +103,8 @@ def run_vpype(svg_text: str, pipeline: str) -> str:
         full = f"read {shlex.quote(str(in_path))} {pipeline} write {shlex.quote(str(out_path))}"
         logger.debug("vpype invocation: %s", full)
         try:
-            vpype_cli.execute(full)
+            with _preserve_root_logger():
+                vpype_cli.execute(full)
         except Exception as exc:  # vpype/click raise a variety of types
             raise VpypePipelineError(f"vpype pipeline failed: {exc}") from exc
 
@@ -89,6 +116,32 @@ def run_vpype(svg_text: str, pipeline: str) -> str:
         out_text = out_path.read_text(encoding="utf-8")
 
     return _restore_labels(out_text, original_labels)
+
+
+def vpype_stat(svg_text: str) -> str:
+    """Return the output of vpype's ``stat`` command on ``svg_text``.
+
+    Runs ``read <tmp>.svg stat`` and captures stdout. Returns an empty
+    string and logs a warning if vpype is not installed or the command
+    fails — ``stat`` is purely informational, so we never let it abort
+    the main conversion.
+    """
+    try:
+        import vpype_cli
+    except ImportError:
+        return ""
+
+    with tempfile.TemporaryDirectory(prefix="svg2fcm-vpype-stat-") as tmp:
+        in_path = Path(tmp) / "in.svg"
+        in_path.write_text(svg_text, encoding="utf-8")
+        buf = io.StringIO()
+        try:
+            with _preserve_root_logger(), contextlib.redirect_stdout(buf):
+                vpype_cli.execute(f"read {shlex.quote(str(in_path))} stat")
+        except Exception as exc:
+            logger.warning("vpype stat failed: %s", exc)
+            return ""
+        return buf.getvalue()
 
 
 def _extract_top_level_labels(svg_text: str) -> list[str]:
