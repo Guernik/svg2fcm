@@ -6,6 +6,37 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-05-23
+
+### Added
+
+- **`--vpype PIPELINE`**. Pre-process the input SVG through a vpype
+  pipeline before conversion. The string is passed verbatim to vpype
+  (minus the `read`/`write` bookends), so the full vpype command surface
+  including third-party plugins is available — e.g.
+  `svg2fcm in.svg --vpype "linemerge --tolerance 0.1mm linesimplify linesort"`.
+  Original Inkscape/`id` layer labels are restored across the vpype
+  round-trip so per-pen FCM filenames stay human-readable.
+- **`[vpype]` optional extra** (`pip install 'svg2fcm[vpype]'` /
+  `pipx install --python python3.13 --force '.[vpype]'`). vpype is
+  marker-scoped to Python 3.11–3.13; the base install remains
+  available on Python 3.10–3.14.
+- **`-q` / `--quiet`** flag to suppress INFO logging.
+- **Per-run `<input-stem>_result.log`** dropped alongside the FCM
+  outputs. Captures the invocation, viewBox-fix status, layer detection,
+  per-layer conversion, and (with `--vpype`) the pipeline plus
+  pre/post-pipeline `vpype stat` output. Always at DEBUG level
+  regardless of console verbosity. Disable with `--no-log`.
+
+### Changed
+
+- Default log level is now **INFO** (was WARNING). Multi-layer runs
+  print one progress line per layer by default.
+- `-v` / `--verbose` is now a single boolean enabling **DEBUG** (was a
+  counted flag where `-v` meant INFO and `-vv` meant DEBUG).
+- New DEBUG traces cover vpype invocation, label remap, and layer
+  detection.
+
 ## [0.2.1] — 2026-05-20
 
 ### Changed

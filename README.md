@@ -40,7 +40,11 @@ machine**, no Canvas Workspace round-trip required.
 
 ## Install
 
-Requires Python 3.10 or newer.
+Requires Python 3.10 or newer. The recommended install also pulls in
+[vpype](https://vpype.readthedocs.io/) for plotter-oriented pre-processing
+(`--vpype`); vpype currently supports Python 3.11–3.13, so install
+svg2fcm under one of those if you want it. Plain svg2fcm without vpype
+works on any Python ≥3.10.
 
 ### System-wide CLI (recommended)
 
@@ -54,10 +58,21 @@ brew install pipx                                  # macOS
 # or: python3 -m pip install --user pipx           # Linux/Windows
 pipx ensurepath                                    # add ~/.local/bin to PATH
 
-# 2. Install svg2fcm from a checkout:
+# 2. Install svg2fcm + vpype from a checkout (recommended):
 git clone https://github.com/emilioguernik/svg2fcm
 cd svg2fcm
+pipx install --python python3.13 --force '.[vpype]'
+
+# Or, without vpype (any Python ≥3.10):
 just install-cli                                   # = pipx install --force .
+```
+
+Already installed without vpype and want to add it later? Reinstall under
+a vpype-compatible Python and re-include the extra:
+
+```bash
+pipx uninstall svg2fcm
+pipx install --python python3.13 --force '/path/to/svg2fcm[vpype]'
 ```
 
 Remove with `just uninstall-cli` (or `pipx uninstall svg2fcm`).
@@ -101,6 +116,9 @@ svg2fcm -n  input.svg                   # one piece per shape (legacy);
                                         # default groups everything into one
                                         # piece, which the machine imports
                                         # more reliably.
+svg2fcm input.svg --vpype "linemerge linesimplify"   # pre-process via vpype
+                                        # (install with the [vpype] extra)
+svg2fcm input.svg --no-log              # skip the per-run result.log file
 svg2fcm --version
 ```
 
@@ -121,6 +139,38 @@ svg2fcm benteveo_multi_pen.svg -o ./out/   # all four files into ./out/
 
 A single Inkscape layer is treated as a single-pen design (one `.fcm`,
 no `_<label>` suffix).
+
+### Per-run result.log
+
+Every run drops a `<input-stem>_result.log` file next to the generated
+`.fcm` outputs. It contains the invocation, viewBox-fix status, layer
+detection, per-layer conversion details, and — when `--vpype` is used —
+the vpype pipeline plus `vpype ... stat` output on both the source and
+the vpype'd SVG. The log is captured at DEBUG level regardless of the
+console verbosity, so it's a complete record even when stdout was quiet.
+
+Pass `--no-log` to skip it.
+
+### Pre-processing with vpype
+
+If you installed svg2fcm with the `[vpype]` extra (see [Install](#install)),
+you can pipe the input SVG through any [vpype](https://vpype.readthedocs.io/)
+pipeline before it's converted to FCM — useful for plotter-oriented tweaks
+like merging coincident endpoints, simplifying curves, reordering paths to
+cut down on pen travel, or cropping to a page size:
+
+```bash
+svg2fcm input.svg --vpype "linemerge --tolerance 0.1mm linesimplify linesort"
+```
+
+The string after `--vpype` is passed verbatim to vpype, minus the
+`read`/`write` bookends (svg2fcm supplies those itself). Anything that
+works in a normal `vpype read … write …` pipeline works here, including
+third-party vpype plugins installed into the same venv.
+
+If `--vpype` is used without the extra installed, svg2fcm exits with a
+clear error pointing back to this section. Everything else in the CLI
+works regardless.
 
 ### Fixing missing `viewBox`
 

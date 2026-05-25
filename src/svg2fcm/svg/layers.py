@@ -31,8 +31,11 @@ contained that group.
 
 from __future__ import annotations
 
+import logging
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
+
+logger = logging.getLogger(__name__)
 
 SVG_NS = "http://www.w3.org/2000/svg"
 INKSCAPE_NS = "http://www.inkscape.org/namespaces/inkscape"
@@ -107,6 +110,11 @@ def split_layers(svg_text: str) -> list[Layer]:
     # pen-group. If even one is anonymous, the file is probably structured
     # for visual organisation rather than per-pen output.
     if not all(_is_pen_group(g) for g in top_level_groups):
+        logger.debug(
+            "Top-level <g> elements are not all labelled pen-groups (%d total); "
+            "skipping per-layer split.",
+            len(top_level_groups),
+        )
         return []
 
     layers: list[Layer] = []
@@ -114,6 +122,11 @@ def split_layers(svg_text: str) -> list[Layer]:
         label = layer_el.get(_LABEL_ATTR) or layer_el.get("id") or ""
         svg_text_for_layer = _serialize_with_only_layer(root, top_level_groups, layer_el)
         layers.append(Layer(label=label, index=idx, svg_text=svg_text_for_layer))
+    logger.debug(
+        "Detected %d pen-group(s): %s",
+        len(layers),
+        [layer.label or f"<index {layer.index}>" for layer in layers],
+    )
     return layers
 
 
