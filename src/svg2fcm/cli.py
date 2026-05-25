@@ -373,7 +373,7 @@ def main(argv: list[str] | None = None) -> int:
         f"svg2fcm {__version__} — run at {_dt.datetime.now().isoformat(timespec='seconds')}",
         f"invocation: {' '.join(sys.argv)}",
         f"input: {args.input}",
-        f"options: group={group}, fix_viewbox={not args.no_viewbox_fix}, " f"vpype={args.vpype!r}",
+        f"options: group={group}, fix_viewbox={not args.no_viewbox_fix}, vpype={args.vpype!r}",
     ]
 
     log_dir: Path | None = None
