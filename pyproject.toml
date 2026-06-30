@@ -42,9 +42,9 @@ dev = [
 svg2fcm = "svg2fcm.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/emilioguernik/svg2fcm"
-Issues = "https://github.com/emilioguernik/svg2fcm/issues"
-Repository = "https://github.com/emilioguernik/svg2fcm"
+Homepage = "https://github.com/Guernik/svg2fcm"
+Issues = "https://github.com/Guernik/svg2fcm/issues"
+Repository = "https://github.com/Guernik/svg2fcm"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/svg2fcm"]

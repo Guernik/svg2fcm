@@ -6,7 +6,7 @@ needed to get a working dev environment, make a change, and submit it.
 ## Quick start
 
 ```bash
-git clone https://github.com/emilioguernik/svg2fcm
+git clone https://github.com/Guernik/svg2fcm
 cd svg2fcm
 just install         # creates .venv and installs everything
 just hooks-install   # activate pre-commit git hooks (one-time, per clone)
@@ -125,7 +125,7 @@ upstream license so we can verify compatibility before merging.
 5. The `release` workflow (`.github/workflows/release.yml`) fires on
    the `v*` tag, builds the wheel, sdist, and Inkscape extension zip,
    then publishes a GitHub Release at
-   `https://github.com/emilioguernik/svg2fcm/releases/tag/v0.1.1` with
+   `https://github.com/Guernik/svg2fcm/releases/tag/v0.1.1` with
    those three artifacts attached.
 
 PyPI publishing is not wired up yet.

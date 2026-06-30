@@ -1,6 +1,6 @@
 # svg2fcm
 
-[![ci](https://github.com/guernik/svg2fcm/actions/workflows/ci.yml/badge.svg)](https://github.com/guernik/svg2fcm/actions/workflows/ci.yml)
+[![ci](https://github.com/Guernik/svg2fcm/actions/workflows/ci.yml/badge.svg)](https://github.com/Guernik/svg2fcm/actions/workflows/ci.yml)
 [![license: MPL-2.0](https://img.shields.io/badge/license-MPL--2.0-blue.svg)](LICENSE)
 [![python: 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](pyproject.toml)
 
@@ -59,7 +59,7 @@ brew install pipx                                  # macOS
 pipx ensurepath                                    # add ~/.local/bin to PATH
 
 # 2. Install svg2fcm + vpype from a checkout (recommended):
-git clone https://github.com/emilioguernik/svg2fcm
+git clone https://github.com/Guernik/svg2fcm
 cd svg2fcm
 pipx install --python python3.13 --force '.[vpype]'
 
@@ -98,7 +98,7 @@ startup.
 For hacking on the project itself:
 
 ```bash
-git clone https://github.com/emilioguernik/svg2fcm
+git clone https://github.com/Guernik/svg2fcm
 cd svg2fcm
 just install        # creates .venv with -e ".[dev]"
 just check          # ruff + mypy --strict + pytest
@@ -206,7 +206,7 @@ Prefer a GUI? An Inkscape Output extension is bundled with each release:
 Get the zip one of two ways:
 
 - **Download** `svg2fcm-inkscape-<version>.zip` from the
-  [Releases page](https://github.com/emilioguernik/svg2fcm/releases), or
+  [Releases page](https://github.com/Guernik/svg2fcm/releases), or
 - **Build it locally** from a checkout with `just package-inkscape` —
   the zip lands at `dist/svg2fcm-inkscape-<version>.zip`. Useful if you
   want to ship the extension off your own machine without depending on
